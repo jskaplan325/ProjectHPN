@@ -5,7 +5,8 @@ import ExecutiveSummary from './pages/ExecutiveSummary';
 import TeamRoster from './pages/TeamRoster';
 import ProjectData from './pages/ProjectData';
 import IndividualCapacity from './pages/IndividualCapacity';
-import { processCapacityData, generateTeamRosterTemplate, generateProjectDataTemplate, downloadCSV } from './utils/dataProcessor';
+import DepartmentView from './pages/DepartmentView';
+import { processCapacityData, processDepartmentView, generateTeamRosterTemplate, generateProjectDataTemplate, downloadCSV } from './utils/dataProcessor';
 
 function Navigation() {
   const location = useLocation();
@@ -17,6 +18,12 @@ function Navigation() {
         className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
       >
         Executive Summary
+      </Link>
+      <Link
+        to="/department-view"
+        className={`nav-link ${location.pathname === '/department-view' ? 'active' : ''}`}
+      >
+        Department View
       </Link>
       <Link
         to="/team-roster"
@@ -46,12 +53,14 @@ function App() {
   const [teamRosterFileName, setTeamRosterFileName] = useState('');
   const [projectDataFileName, setProjectDataFileName] = useState('');
   const [processedData, setProcessedData] = useState(null);
+  const [departmentData, setDepartmentData] = useState(null);
 
   const handleTeamRosterLoaded = (data, fileName) => {
     setTeamRoster(data);
     setTeamRosterFileName(fileName);
     if (projectData) {
       setProcessedData(processCapacityData(data, projectData));
+      setDepartmentData(processDepartmentView(data, projectData));
     }
   };
 
@@ -60,6 +69,7 @@ function App() {
     setProjectDataFileName(fileName);
     if (teamRoster) {
       setProcessedData(processCapacityData(teamRoster, data));
+      setDepartmentData(processDepartmentView(teamRoster, data));
     }
   };
 
@@ -73,6 +83,17 @@ function App() {
     downloadCSV(content, 'project_data_template.csv');
   };
 
+  const handleReset = () => {
+    if (window.confirm('Are you sure you want to reset all data? This will clear all uploaded files and calculations.')) {
+      setTeamRoster(null);
+      setProjectData(null);
+      setTeamRosterFileName('');
+      setProjectDataFileName('');
+      setProcessedData(null);
+      setDepartmentData(null);
+    }
+  };
+
   return (
     <Router>
       <div className="app">
@@ -84,14 +105,23 @@ function App() {
 
         <main className="main-content">
           <div className="upload-section">
-            <h2>Data Upload</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Data Upload</h2>
+              {(teamRoster || projectData) && (
+                <button className="reset-button" onClick={handleReset}>
+                  Reset All Data
+                </button>
+              )}
+            </div>
             <div className="upload-grid">
               <FileUpload
+                key={`team-${teamRosterFileName}`}
                 title="Team Roster"
                 onDataLoaded={handleTeamRosterLoaded}
                 fileName={teamRosterFileName}
               />
               <FileUpload
+                key={`project-${projectDataFileName}`}
                 title="Project Data"
                 onDataLoaded={handleProjectDataLoaded}
                 fileName={projectDataFileName}
@@ -113,6 +143,7 @@ function App() {
 
           <Routes>
             <Route path="/" element={<ExecutiveSummary data={processedData} />} />
+            <Route path="/department-view" element={<DepartmentView departments={departmentData} />} />
             <Route path="/team-roster" element={<TeamRoster teamRoster={teamRoster} />} />
             <Route path="/project-data" element={<ProjectData projectData={projectData} />} />
             <Route path="/individual-capacity" element={<IndividualCapacity data={processedData} />} />
